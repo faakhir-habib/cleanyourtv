@@ -62,7 +62,7 @@
     <string name="remote_qr_url" translatable="false">http://{ip}:8080</string>
     <string name="remote_qr_caption" translatable="false">Phone Remote</string>
     <string name="remote_qr_hint" translatable="false">Scan with phone camera</string>
-    <string name="companion_service" translatable="false">com.local.tvremote/.RemoteService</string>
+    <string name="companion_service" translatable="false">com.android.local.tvremote/com.local.tvremote.RemoteService</string>
     <string name="live_tv_uri" translatable="false">nayatv://channel?name=Geo%20News</string>
 
     <!-- Optional exact system tuner ID for the Inputs menu's Live TV row, e.g. the DVB-S input on
