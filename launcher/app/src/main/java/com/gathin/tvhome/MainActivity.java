@@ -52,6 +52,7 @@ import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.text.style.ForegroundColorSpan;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -118,6 +119,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private long idleClockMs;
     private final Runnable showIdleClock = () -> startActivity(new Intent(this, ClockActivity.class));
     private String liveTvAction;
+    private String liveTvUri;
+    private String companionService;
+    private String remoteQrUrl;
+    /** The address the QR code on Home shows now, so it is redrawn only when it changes. */
+    private String remoteQrShown;
     private String liveTvInputId;
     /** The app library is on (config.xml, app_library): only then can the tile menu take an app off Home. */
     private boolean appLibraryEnabled;
@@ -309,6 +315,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (validated == lastValidated) return;
             lastValidated = validated;
             if (wifiNoInternetTint != null) handler.post(MainActivity.this::updateWifiLabel);
+            if (validated) handler.post(retryLiveTvAfterBoot);
         }
     };
     /** Shows the Inputs pill once the TV registers an input: at boot HDMI inputs can appear after Home is shown. */
@@ -400,6 +407,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         bootToLiveTv = cfg.bootToLiveTv;
         openOnStartChoice = cfg.openOnStartChoice;
         liveTvAction = cfg.liveTvAction;
+        liveTvUri = cfg.liveTvUri;
+        companionService = cfg.companionService;
+        remoteQrUrl = cfg.remoteQrUrl;
         liveTvInputId = cfg.liveTvInputId;
         appLibraryEnabled = cfg.appLibrary;
         tileMenuEnabled = cfg.tileMenu;
@@ -916,6 +926,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onResume() {
         super.onResume();
+        resumedOnHome = true;
+        startCompanionService();
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
             recreate();
@@ -1128,6 +1140,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onPause() {
         super.onPause();
         root.removeCallbacks(showIdleClock);
+        handler.removeCallbacks(retryLiveTvAfterBoot);
+        resumedOnHome = false;
         endReorder();   // Home or another app while reordering keeps the order so far
         wallpaperPlayer.stop();
         stopAmbientAnimation();
@@ -2559,6 +2573,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */
     private void updateWifiLabel() {
+        updateRemoteQr();
         String text = getString(R.string.wifi);
         boolean vpn = false, online = false, validated = false;
         int icon = R.drawable.ic_wifi;
@@ -2781,6 +2796,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         SharedPreferences prefs = getSharedPreferences(OpenOnStart.BOOT_PREFS, MODE_PRIVATE);
         String target = bootToLiveTv ? liveTvPkg : app;
         if (!OpenOnStart.due(boot, prefs.getInt(OpenOnStart.BOOT_KEY, -1), target, getPackageName())) return false;
+        // A live_tv_uri is a streamed channel: wait on Home until Android has validated the internet, retrying each
+        // second and on validation. Give up LIVE_TV_NET_WAIT_MS after boot, so a late connection never opens it later.
+        if (bootToLiveTv && !liveTvUri.isEmpty() && !internetValidated()) {
+            if (SystemClock.elapsedRealtime() < LIVE_TV_NET_WAIT_MS) handler.postDelayed(retryLiveTvAfterBoot, 1000);
+            return false;
+        }
         if (!prefs.edit().putInt(OpenOnStart.BOOT_KEY, boot).commit()) return false;
         Intent i = bootToLiveTv ? liveTvIntent() : OpenOnStart.intent(getPackageManager(), app);
         if (i == null) return false;
@@ -2788,9 +2809,96 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         return true;
     }
 
-    /** The Live TV app's launch intent: its leanback entry point, or the configured action if it has none. */
+    /** companion_service: start another app's service while Home is in front, where Android allows it. Firmware
+     *  that force-stops apps at boot (com.hisilicon.rmservice) keeps such an app from starting itself. */
+    private void startCompanionService() {
+        ComponentName c = companionService.isEmpty() ? null : ComponentName.unflattenFromString(companionService);
+        if (c == null) return;
+        try {
+            startForegroundService(new Intent().setComponent(c));
+        } catch (RuntimeException e) {
+            Log.w("tvhome", "companion_service " + companionService + ": " + e.getMessage());
+        }
+    }
+
+    /** remote_qr_url: shows the QR code for the TV's current address, or hides it when there is none. */
+    private void updateRemoteQr() {
+        View card = findViewById(R.id.remoteQr);
+        if (card == null) return;
+        String ip = remoteQrUrl.isEmpty() ? null : ipv4Address();
+        if (ip == null) {
+            card.setVisibility(View.GONE);
+            remoteQrShown = null;
+            return;
+        }
+        String url = remoteQrUrl.replace("{ip}", ip);
+        if (url.equals(remoteQrShown)) return;
+        QrCode qr = QrCode.encode(url);
+        if (qr == null) {
+            card.setVisibility(View.GONE);
+            return;
+        }
+        // Black on white with the standard four-module quiet zone; whole pixels per module, scaled without smoothing.
+        int quiet = 4, scale = 6, n = (qr.size + 2 * quiet) * scale;
+        int[] px = new int[n * n];
+        for (int y = 0; y < n; y++) {
+            for (int x = 0; x < n; x++) {
+                px[y * n + x] = qr.get(x / scale - quiet, y / scale - quiet) ? Color.BLACK : Color.WHITE;
+            }
+        }
+        BitmapDrawable d = new BitmapDrawable(getResources(), Bitmap.createBitmap(px, n, n, Bitmap.Config.ARGB_8888));
+        d.setFilterBitmap(false);
+        ((ImageView) findViewById(R.id.remoteQrImage)).setImageDrawable(d);
+        card.setVisibility(View.VISIBLE);
+        remoteQrShown = url;
+    }
+
+    /** The TV's IPv4 address on its active network, or null when it has none. */
+    private String ipv4Address() {
+        ConnectivityManager cm = getSystemService(ConnectivityManager.class);
+        android.net.LinkProperties lp = cm == null ? null : cm.getLinkProperties(cm.getActiveNetwork());
+        if (lp == null) return null;
+        for (android.net.LinkAddress a : lp.getLinkAddresses()) {
+            if (a.getAddress() instanceof java.net.Inet4Address) return a.getAddress().getHostAddress();
+        }
+        return null;
+    }
+
+    /** How long after boot a live_tv_uri may still wait for the internet before Home stays Home. */
+    private static final long LIVE_TV_NET_WAIT_MS = 3 * 60_000L;
+    /** Tries boot_to_live_tv again while Home is on screen; onPause cancels it. */
+    private final Runnable retryLiveTvAfterBoot = () -> {
+        handler.removeCallbacks(this.retryLiveTvAfterBoot);
+        if (isResumedOnHome()) openLiveTvAfterBoot();
+    };
+
+    /** Home is on screen: set in onResume, cleared in onPause. */
+    private boolean resumedOnHome;
+
+    private boolean isResumedOnHome() {
+        return resumedOnHome;
+    }
+
+    /** A non-VPN network Android has reached the internet through (NET_CAPABILITY_VALIDATED). */
+    private boolean internetValidated() {
+        ConnectivityManager cm = getSystemService(ConnectivityManager.class);
+        if (cm == null) return false;
+        for (Network net : cm.getAllNetworks()) {
+            NetworkCapabilities caps = cm.getNetworkCapabilities(net);
+            if (caps != null && !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+                    && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) return true;
+        }
+        return false;
+    }
+
+    /** The Live TV app's launch intent: the configured link, its leanback entry point, or the configured action if
+     *  it has none. A link the app no longer answers falls back to the entry point. */
     private Intent liveTvIntent() {
         if (liveTvPkg.isEmpty()) return null;
+        if (!liveTvUri.isEmpty()) {
+            Intent byUri = new Intent(Intent.ACTION_VIEW, Uri.parse(liveTvUri)).setPackage(liveTvPkg);
+            if (getPackageManager().resolveActivity(byUri, 0) != null) return byUri;
+        }
         Intent i = getPackageManager().getLeanbackLaunchIntentForPackage(liveTvPkg);
         if (i != null || liveTvAction.isEmpty()) return i;
         Intent byAction = new Intent(liveTvAction).setPackage(liveTvPkg);

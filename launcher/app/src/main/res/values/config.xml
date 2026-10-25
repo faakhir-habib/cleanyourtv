@@ -17,10 +17,10 @@
 
     <!-- Apps pinned to the dock row at the bottom, in this order. Missing apps are skipped. -->
     <string-array name="dock_apps">
-        <item>com.netflix.ninja</item>
-        <item>com.amazon.amazonvideo.livingroom</item>
+        <item>com.nayatel.nayatv</item>
         <item>com.google.android.youtube.tv</item>
-        <item>in.startv.hotstar</item>
+        <item>com.android.vending</item>
+        <item>app.cricfy.tv</item>
     </string-array>
     <!-- With fewer dock_apps than columns (or a dock app that is not installed), the free dock slots take
          the first grid apps, so the dock never shows a gap. false leaves them empty (#162); a theme can
@@ -29,17 +29,16 @@
 
     <!-- Apps never shown as tiles (e.g. the Live TV app, which the Inputs menu already covers). -->
     <string-array name="hidden_apps">
-        <item>com.mediatek.wwtv.tvcenter</item>
-        <item>com.mitv.gallery</item>
+        <item>com.softmedia.receiver</item>
     </string-array>
 
     <!-- The TV's Live TV / tuner app, offered at the end of the Inputs menu. Leave empty to omit. -->
-    <string name="live_tv_package" translatable="false">com.mediatek.wwtv.tvcenter</string>
+    <string name="live_tv_package" translatable="false">com.nayatel.nayatv</string>
 
     <!-- Open the Live TV app above the first time Home comes up after the TV is switched on, for sets that are
          mostly used for broadcast TV. Once per boot: Home after that stays Home. Can also be set with
          "boot_to_live_tv": true in a theme's config.json. -->
-    <bool name="boot_to_live_tv">false</bool>
+    <bool name="boot_to_live_tv">true</bool>
 
     <!-- An "Open on start" row in Launcher settings: pick any app on the TV, and the first time Home comes up
          after the TV starts it opens that app instead. Once per boot, like boot_to_live_tv (which wins when
@@ -51,6 +50,20 @@
          resolves to nothing (TCL Android TV 9 on China-market sets is one). This action is then sent
          to that package instead, and the app starts normally. Leave empty to omit. -->
     <string name="live_tv_action" translatable="false"></string>
+    <!-- A link that boot_to_live_tv opens in the Live TV app, sent as ACTION_VIEW to live_tv_package, instead of the
+         app's start screen: a channel straight away. NayaTV: nayatv://channel?name=Geo%20News. A link the app does
+         not answer falls back to its start screen. Home first waits until Android has validated the internet
+         (Wi-Fi connected and working), for up to 3 minutes after boot. A theme can set "live_tv_uri". Leave empty
+         to omit. -->
+    <!-- A service of another app that Home starts each time it comes up, "package/.Service". For a companion app
+         the firmware force-stops at boot (com.hisilicon.rmservice does), so it cannot start itself. Leave empty to omit. -->
+    <!-- A QR code on Home that opens this address on a phone, "{ip}" replaced by the TV's current IPv4 address, e.g.
+         http://{ip}:8080 for the phone remote. The caption is remote_qr_caption. Leave empty to omit. -->
+    <string name="remote_qr_url" translatable="false">http://{ip}:8080</string>
+    <string name="remote_qr_caption" translatable="false">Phone Remote</string>
+    <string name="remote_qr_hint" translatable="false">Scan with phone camera</string>
+    <string name="companion_service" translatable="false">com.local.tvremote/.RemoteService</string>
+    <string name="live_tv_uri" translatable="false">nayatv://channel?name=Geo%20News</string>
 
     <!-- Optional exact system tuner ID for the Inputs menu's Live TV row, e.g. the DVB-S input on
          a TV with separate antenna, cable and satellite tuners. It opens that input's channel
@@ -80,7 +93,7 @@
          offers one row that starts this service: component first, then action. The component can also be an
          activity, for sets whose panel is a dialog (BYINTEK U4). With no Live TV app either, the Inputs pill
          opens the panel directly instead of a menu. Leave empty to omit. -->
-    <string name="source_panel_service" translatable="false"></string>
+    <string name="source_panel_service" translatable="false">com.vstv.input/.MainActivity</string>
     <string name="source_panel_action" translatable="false"></string>
     <!-- One int extra sent with the source panel intent, "name=value". Coocaa OS (Skyworth, China) needs
          control_center_command=100 for its control center to open on the source row, as the remote's
@@ -196,7 +209,7 @@
          com.xgimi.xrmservice does, on every one of its remote keys, power included (docs/TROUBLESHOOTING.md).
          Whenever that launcher's home screen comes up anyway, HomeKeyService (HOME_KEY_SERVICE=1) sends the TV
          straight back here. A theme's config.json can set it too. Leave empty to omit. -->
-    <string name="stock_home_redirect" translatable="false"></string>
+    <string name="stock_home_redirect" translatable="false">com.vstv.mercurytransit</string>
 
     <!-- Show the Solar Hijri (Shamsi) date used in Iran and Afghanistan, e.g. "27 Mehr 1405", above the
          Gregorian date. -->
@@ -305,11 +318,11 @@
 
     <!-- Grid rows left visible under the dock on the home screen. 0 = dock sits at the very bottom. Tiles shrink if
          the dock, its title and this many rows would not otherwise fit the screen height. -->
-    <integer name="rows_below_dock">0</integer>
+    <integer name="rows_below_dock">1</integer>
 
     <!-- The focused dock app's name in large type above the dock. false keeps only the glow, which leaves room
          for bigger tiles when rows_below_dock is 2 or 3. -->
-    <bool name="dock_title">true</bool>
+    <bool name="dock_title">false</bool>
 
     <!-- Tiles per row in the grid; the dock always has this many slots. Tiles are 180dp wide at 4 columns and
          shrink to fit from 5 up (about 144dp at 5, 117dp at 6 on a 1080p TV). -->
