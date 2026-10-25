@@ -64,6 +64,12 @@ final class Config {
     final List<String> libraryApps;
     final String liveTvPackage;
     final String liveTvAction;
+    /** A link boot_to_live_tv opens in the Live TV app instead of its start screen (config.xml, live_tv_uri). */
+    final String liveTvUri;
+    /** A service of another app Home starts each time it comes up (config.xml, companion_service). */
+    final String companionService;
+    /** Address a QR code on Home opens, with {ip} for the TV's address (config.xml, remote_qr_url). */
+    final String remoteQrUrl;
     final String liveTvInputId;
     /** Package to the action its tile sends instead of opening the start screen (config.xml, launch_actions). */
     final Map<String, String> launchActions;
@@ -246,7 +252,7 @@ final class Config {
     final boolean dockBandAll;
 
     private Config(List<String> dockApps, boolean fillDock, List<String> hiddenApps, List<String> libraryApps, String liveTvPackage,
-                   String liveTvAction, String liveTvInputId, Map<String, String> launchActions, Map<String, String> appLabels,
+                   String liveTvAction, String liveTvUri, String companionService, String remoteQrUrl, String liveTvInputId, Map<String, String> launchActions, Map<String, String> appLabels,
                    Map<String, String> appBanners, String sourcePanelService, String sourcePanelAction,
                    String sourcePanelExtra, boolean coocaaSources, String inputAction,
                    String inputUriScheme, int columns, int rowsBelowDock, boolean animations, boolean advancedEffects,
@@ -271,6 +277,9 @@ final class Config {
         this.libraryApps = Collections.unmodifiableList(libraryApps);
         this.liveTvPackage = liveTvPackage;
         this.liveTvAction = liveTvAction;
+        this.liveTvUri = liveTvUri;
+        this.companionService = companionService;
+        this.remoteQrUrl = remoteQrUrl;
         this.liveTvInputId = liveTvInputId;
         this.launchActions = Collections.unmodifiableMap(launchActions);
         this.appLabels = Collections.unmodifiableMap(appLabels);
@@ -387,6 +396,9 @@ final class Config {
         List<String> libraryApps = new ArrayList<>(Arrays.asList(res.getStringArray(R.array.library_apps)));
         String liveTv = res.getString(R.string.live_tv_package).trim();
         String liveTvAction = res.getString(R.string.live_tv_action).trim();
+        String liveTvUri = res.getString(R.string.live_tv_uri).trim();
+        String companionService = res.getString(R.string.companion_service).trim();
+        String remoteQrUrl = res.getString(R.string.remote_qr_url).trim();
         String liveTvInputId = res.getString(R.string.live_tv_input_id).trim();
         List<String> launchActions = new ArrayList<>(Arrays.asList(res.getStringArray(R.array.launch_actions)));
         List<String> appLabels = new ArrayList<>(Arrays.asList(res.getStringArray(R.array.app_labels)));
@@ -485,6 +497,7 @@ final class Config {
             libraryApps = stringList(json, "library_apps", libraryApps);
             liveTv = string(json, "live_tv_package", liveTv);
             liveTvAction = string(json, "live_tv_action", liveTvAction);
+            liveTvUri = string(json, "live_tv_uri", liveTvUri);
             liveTvInputId = string(json, "live_tv_input_id", liveTvInputId);
             launchActions = stringList(json, "launch_actions", launchActions);
             appLabels = stringList(json, "app_labels", appLabels);
@@ -617,7 +630,7 @@ final class Config {
         Festival festival = json == null ? Festival.NONE : Festival.parse(string(json, "festival", ""),
                 string(json, "festival_until", ""), string(json, "greeting", ""), string(json, "accent_color", ""));
 
-        return new Config(dock, fillDock, hidden, libraryApps, liveTv, liveTvAction, liveTvInputId, packageMap(launchActions), packageMap(appLabels),
+        return new Config(dock, fillDock, hidden, libraryApps, liveTv, liveTvAction, liveTvUri, companionService, remoteQrUrl, liveTvInputId, packageMap(launchActions), packageMap(appLabels),
                 packageMap(appBanners), panelService, panelAction, panelExtra, coocaaSources, inputAction, inputUriScheme, Math.max(1, columns),
                 Math.max(0, rowsBelow), animations, advancedEffects, shamsi, greetingName, moduleCards, reducedMotion, bootToLiveTv,
                 openOnStartChoice, dockTitle, dockRow, topMenu, launcherSettingsButton, reorderButton, showNetworkPill, showInputsPill,

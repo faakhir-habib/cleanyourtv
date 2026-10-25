@@ -103,6 +103,49 @@
         android:visibility="gone"
         android:importantForAccessibility="no" />
 
+    <!-- remote_qr_url: a QR code that opens the phone remote, top right under the buttons. Drawn before the grid, so
+         the grid covers it when it slides up. Gone when the option is off or the TV has no address. -->
+    <LinearLayout
+        android:id="@+id/remoteQr"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="128dp"
+        android:layout_marginEnd="58dp"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:focusable="false"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/remoteQrImage"
+            android:layout_width="128dp"
+            android:layout_height="128dp"
+            android:importantForAccessibility="no" />
+
+        <TextView
+            android:id="@+id/remoteQrCaption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/remote_qr_caption"
+            android:textColor="#FFFFFFFF"
+            android:textSize="17sp"
+            android:fontFamily="@string/font_medium"
+            android:letterSpacing="0.02" />
+
+        <TextView
+            android:id="@+id/remoteQrHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="@string/remote_qr_hint"
+            android:textColor="#B3FFFFFF"
+            android:textSize="12sp"
+            android:fontFamily="@string/font_medium"
+            android:letterSpacing="0.03" />
+    </LinearLayout>
+
     <!-- Top shelf: the focused dock app's name, positioned above the dock in code. -->
     <LinearLayout
         android:id="@+id/hero"
